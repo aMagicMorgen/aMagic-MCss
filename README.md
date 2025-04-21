@@ -292,3 +292,215 @@ body {
 
 Таким образом вы удобно храните MCSS в CSS-файле, отделяя обычные стили от ваших динамических классов, и легко генерируете JS для применения классов на странице.
 
+# Документация MCss Manager
+
+## Оглавление
+1. [Введение](#введение)
+2. [Класс MCssJsLoader](#класс-mcssjsloader)
+   - [Методы](#методы-mcssjsloader)
+3. [Класс MCssJs](#класс-mcssjs)
+   - [Методы](#методы-mcssjs)
+4. [Примеры использования](#примеры-использования)
+5. [Особенности и ограничения](#особенности-и-ограничения)
+
+---
+
+## Введение
+
+**MCss Manager** — инструмент для работы с динамическими CSS-классами, позволяющий:
+- Хранить MCSS-правила в CSS-файлах внутри магических комментариев
+- Генерировать JavaScript для автоматического применения классов
+- Поддерживать сложные селекторы (теги, ID, атрибуты)
+
+Формат файла:
+```css
+/* Обычный CSS */
+body { background: white; }
+
+/*mcss
+h1 { text-xl font-bold } 
+mcss*/
+
+/* снова Обычный CSS */
+block { background: white; }
+
+
+
+/* Другой MCSS-блок */
+/*mcss
+.btn { py-2 px-4 }
+mcss*/
+```
+
+---
+
+## Класс MCss
+
+### Методы MCssJsLoader
+
+#### `loadFromFile(string $filePath): void`
+Загружает CSS-файл и извлекает MCSS-блоки.
+
+**Параметры:**
+- `$filePath` - путь к CSS-файлу
+
+**Исключения:**
+- `RuntimeException` если файл не найден
+
+#### `loadFromString(string $content): void`
+Обрабатывает строку с CSS-контентом.
+
+#### `generateScript(): string`
+Генерирует JS-код для применения классов.
+
+---
+
+## Класс MCssJs
+
+### Методы MCssJs
+
+#### Конструктор `__construct(string $styleText)`
+Инициализирует парсер с очищенным MCSS-кодом.
+
+#### `generateScript(): string`
+Создает готовый JavaScript код.
+
+---
+
+## Примеры использования
+
+### 1. Базовое использование
+```php
+$loader = new MCssJsLoader();
+$loader->loadFromFile('styles.css');
+$script = $loader->generateScript();
+
+echo "<script>{$script}</script>";
+```
+
+### 2. MCSS в строке
+```php
+$css = "/*mcss .card { border rounded } mcss*/";
+$loader->loadFromString($css);
+```
+
+### 3. Комбинирование источников
+```php
+$loader->loadFromFile('base.css');
+$loader->loadFromString('/*mcss a { link } mcss*/');
+```
+
+---
+
+## Поддерживаемые селекторы
+
+### 1. Теги
+```css
+div { 
+  container 
+  mx-auto
+}
+```
+
+### 2. ID
+```css
+#header {
+  bg-white
+  shadow-sm
+}
+```
+
+### 3. Классы (замена)
+```css
+.old-class {
+  new-class1 new-class2
+}
+```
+
+### 4. Атрибуты
+```css
+input[required] {
+  border-red
+}
+```
+
+---
+
+## Генерируемый JavaScript
+
+Пример вывода:
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+  // Для тегов
+  document.querySelectorAll('div').forEach(el => {
+    el.classList.add('container', 'mx-auto');
+  });
+
+  // Для ID
+  const header = document.getElementById('header');
+  if (header) header.classList.add('bg-white', 'shadow-sm');
+
+  // Замена классов
+  document.querySelectorAll('.old-class').forEach(el => {
+    el.classList.remove('old-class');
+    el.classList.add('new-class1', 'new-class2');
+  });
+});
+```
+
+---
+
+## Особенности и ограничения
+
+1. **Объединение блоков**: Все MCSS-блоки объединяются в один.
+   ```css
+   /*mcss h1 { a } mcss*/
+   /*mcss h1 { b } mcss*/
+   ```
+   Результат: `h1 { a b }`
+
+2. **Приоритеты**: 
+   - ID селекторы > атрибуты > классы > теги
+   - Порядок обработки: как встретились в файле
+
+3. **Ограничения**:
+   - Не поддерживаются вложенные комментарии
+   - Медиа-запросы внутри MCSS игнорируются
+   - Псевдоклассы (`:hover`) обрабатываются как часть имени класса
+
+4. **Безопасность**:
+   ```php
+   // Все классы экранируются через addslashes()
+   $js .= " '{$selector}': '{$escaped}'";
+   ```
+
+---
+
+## Рекомендации
+
+1. Используйте отдельные блоки для разных сущностей:
+   ```css
+   /*mcss
+   /* Кнопки */
+   .btn { ... }
+   mcss*/
+
+   /*mcss
+   /* Формы */
+   .input { ... }
+   mcss*/
+   ```
+
+2. Для сложной логики добавляйте комментарии в JS-вывод:
+   ```css
+   /*mcss
+   /* debug: Добавляет рамки */
+   * { debug-border }
+   mcss*/
+   ```
+
+3. Проверяйте консоль браузера на ошибки при применении классов.
+
+---
+
+Теперь вы можете эффективно использовать MCSS-классы, храня их вместе с обычными CSS-правилами, и автоматически генерировать необходимый JavaScript для динамического применения стилей.
